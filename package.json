@@ -1,5 +1,5 @@
 {
-  "name": "@octokit/auth-oauth-client",
+  "name": "@octokit/auth-oauth-user",
   "version": "0.0.0-development",
   "description": "Octokit authentication strategy for OAuth clients",
   "scripts": {
@@ -9,7 +9,7 @@
     "pretest": "npm run -s lint",
     "test": "jest --coverage"
   },
-  "repository": "https://github.com/octokit/auth-oauth-client.js",
+  "repository": "https://github.com/octokit/auth-oauth-user.js",
   "keywords": [
     "github",
     "api",

@@ -1,9 +1,29 @@
-# auth-oauth-client.js
+# auth-oauth-user.js
 
 > Octokit authentication strategy for OAuth clients
 
-[![@latest](https://img.shields.io/npm/v/@octokit/auth-oauth-client.svg)](https://www.npmjs.com/package/@octokit/auth-oauth-client)
-[![Build Status](https://github.com/octokit/auth-oauth-client.js/workflows/Test/badge.svg)](https://github.com/octokit/auth-oauth-client.js/actions?query=workflow%3ATest+branch%3Amain)
+[![@latest](https://img.shields.io/npm/v/@octokit/auth-oauth-user.svg)](https://www.npmjs.com/package/@octokit/auth-oauth-user)
+[![Build Status](https://github.com/octokit/auth-oauth-user.js/workflows/Test/badge.svg)](https://github.com/octokit/auth-oauth-user.js/actions?query=workflow%3ATest+branch%3Amain)
+
+<details>
+<summary>Table of contents</summary>
+
+<!-- toc -->
+
+- [Standalone usage](#standalone-usage)
+  - [Minimal usage example](#minimal-usage-example)
+  - [Full browser usage example](#full-browser-usage-example)
+- [Usage with Octokit](#usage-with-octokit)
+- [`createOAuthClientAuth(options)`](#createoauthclientauthoptions)
+- [`auth(options)`](#authoptions)
+- [Authentication object](#authentication-object)
+- [`auth.hook(request, route, parameters)` or `auth.hook(request, options)`](#authhookrequest-route-parameters-or-authhookrequest-options)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- tocstop -->
+
+</details>
 
 ## Standalone usage
 
@@ -15,11 +35,11 @@ Browsers
 
 </th><td width=100%>
 
-Load `@octokit/auth-oauth-client` directly from [cdn.skypack.dev](https://cdn.skypack.dev)
+Load `@octokit/auth-oauth-user` directly from [cdn.skypack.dev](https://cdn.skypack.dev)
 
 ```html
 <script type="module">
-  import { createOAuthClientAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-client";
+  import { createOAuthClientAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-user";
 </script>
 ```
 
@@ -30,10 +50,10 @@ Node
 
 </th><td>
 
-Install with `npm install @octokit/core @octokit/auth-oauth-client`
+Install with `npm install @octokit/core @octokit/auth-oauth-user`
 
 ```js
-const { createOAuthClientAuth } = require("@octokit/auth-oauth-client");
+const { createOAuthClientAuth } = require("@octokit/auth-oauth-user");
 ```
 
 </td></tr>
@@ -72,10 +92,14 @@ const auth = createOAuthClientAuth({
    */
   async get(authentication) {
     if (authentication.token) {
-      return {
-        ...authentication,
-        isSignedIn: true,
-      };
+      if (await this.check(authentication)) {
+        return {
+          ...authentication,
+          isSignedIn: true,
+        };
+      }
+
+      await this.delete(authentication, { offline: true });
     }
     return { isSignedIn: false };
   },
@@ -94,7 +118,7 @@ const auth = createOAuthClientAuth({
     const code = new URL(location.href).searchParams.get("code");
     if (!code) {
       // invalidate current authentication
-      await this.delete(
+      await this.delete(authentication);
 
       // redirect to OAuth web flow
       location.href = "/api/github/oauth/login";
@@ -172,14 +196,14 @@ const auth = createOAuthClientAuth({
 
     try {
       await fetch(baseUrl + "/token", {
-      method: "delete",
-      headers: {
-        authorization: "token " + token,
-      },
-    })
-    } catch(error) {
-      if (error.status === 404) return // token was already invalid
-      throw error
+        method: "delete",
+        headers: {
+          authorization: "token " + token,
+        },
+      });
+    } catch (error) {
+      if (error.status === 404) return; // token was already invalid
+      throw error;
     }
   },
 
@@ -237,7 +261,179 @@ const {
   scopes,
   refreshToken,
   expiresAt,
-} = await auth({ type: "getSession" });
+} = await auth({ type: "get" });
+
+const { token } = await auth({ type: "create" });
+```
+
+### Full server usage example
+
+This example assumes that you have access to both, the `client_id` and `client_secret` of your OAuth Apps. The `request` method show in the example is [`@octokit/request`](https://github.com/octokit/request.js/), but any other request library could be used.
+
+```js
+const auth = createOAuthClientAuth({
+  /**
+   * Create new authentication
+   *
+   * If the `?code` query parameter from the OAuth web flow is present, remove it,
+   * exchange it for an OAuth access token and return the new authentication object,
+   * it will be cached in localStorage (see authenticationStore)
+   *
+   * If the `?code` query parameter is not present, the user is redirected to the
+   * OAuth webflow.
+   */
+  async create({ clientId, clientSecret, code }) {
+    const response = await request(
+      "POST https://github.com/login/oauth/access_token",
+      {
+        headers: {
+          accept: "application/json",
+        },
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+      }
+    );
+
+    if (response.data.error !== undefined) {
+      throw new Error(
+        `${response.data.error_description} (${response.data.error})`
+      );
+    }
+
+    // "scope" is only present for OAuth apps, not for GitHub apps
+    if (data.scope) {
+      return {
+        token: data.access_token,
+        scopes: data.scope.split(/,\s*/).filter(Boolean),
+        type: "oauth-app",
+      };
+    }
+
+    return {
+      token: data.access_token,
+      type: "github-app",
+    };
+  },
+
+  /**
+   * Check if the locally cached authentication object is valid or not.
+   */
+  async check({ token }) {
+    return fetch(baseUrl + "/token", {
+      headers: {
+        authorization: "token " + token,
+      },
+    }).then(
+      () => true,
+      (error) => {
+        if (error.status === 404) return false;
+        throw error;
+      }
+    );
+  },
+
+  /**
+   * Exchange the locally cached authentication object for a new one
+   */
+  async reset({ token }) {
+    const response = await fetch(baseUrl + "/token", {
+      method: "fetch",
+      headers: {
+        authorization: "token " + token,
+      },
+    });
+    return response.json();
+  },
+
+  /**
+   * Refresh an expiring authentication object for a new one
+   */
+  async refresh({ token, refreshToken }) {
+    const response = await fetch(baseUrl + "/token", {
+      method: "fetch",
+      headers: {
+        authorization: "token " + token,
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+    return response.json();
+  },
+
+  /**
+   * Invalidate the current authentcation and remove it from the local cache
+   */
+  async delete({ token }, { offline }) {
+    if (offline) return;
+
+    try {
+      await fetch(baseUrl + "/token", {
+        method: "delete",
+        headers: {
+          authorization: "token " + token,
+        },
+      });
+    } catch (error) {
+      if (error.status === 404) return; // token was already invalid
+      throw error;
+    }
+  },
+
+  /**
+   * Revoke access from the OAuth app and remove the current authentication
+   * from the local cache
+   */
+  async revokeGrant({ token }) {
+    await fetch(baseUrl + "/grant", {
+      method: "delete",
+      headers: {
+        authorization: "token " + token,
+      },
+    });
+  },
+
+  /**
+   * persist authentication in local store
+   * set to false to disable persistance
+   */
+  authenticationStore: {
+    async get() {
+      return JSON.parse(localStorage.getItem("authentication"));
+    },
+    async set(authentication) {
+      localStorage.setItem("authentication", JSON.stringify(authentication));
+    },
+    async remove() {
+      localStorage.removeItem("authentication");
+    },
+  },
+
+  /**
+   * persist code verification state in local store
+   * set to false to disable persistance
+   */
+  stateStore: {
+    async get() {
+      return localStorage.getItem("state");
+    },
+    async set(state) {
+      localStorage.setItem("state", state);
+    },
+    async remove() {
+      localStorage.removeItem("state");
+    },
+  },
+});
+
+const {
+  token,
+  type,
+  isSignedIn,
+  createdAt,
+  scopes,
+  refreshToken,
+  expiresAt,
+} = await auth({ type: "get" });
 
 const { token } = await auth({ type: "create" });
 ```
@@ -252,12 +448,12 @@ Browsers
 
 </th><td width=100%>
 
-Load `@octokit/auth-oauth-client` and [`@octokit/core`](https://github.com/octokit/core.js) (or core-compatible module) directly from [cdn.skypack.dev](https://cdn.skypack.dev)
+Load `@octokit/auth-oauth-user` and [`@octokit/core`](https://github.com/octokit/core.js) (or core-compatible module) directly from [cdn.skypack.dev](https://cdn.skypack.dev)
 
 ```html
 <script type="module">
   import { Octokit } from "https://cdn.skypack.dev/@octokit/core";
-  import { createOAuthClientAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-client";
+  import { createOAuthClientAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-user";
 </script>
 ```
 
@@ -268,11 +464,11 @@ Node
 
 </th><td>
 
-Install with `npm install @octokit/core @octokit/auth-oauth-client`. Optionally replace `@octokit/core` with a compatible module
+Install with `npm install @octokit/core @octokit/auth-oauth-user`. Optionally replace `@octokit/core` with a compatible module
 
 ```js
 const { Octokit } = require("@octokit/core");
-const { createOAuthClientAuth } = require("@octokit/auth-oauth-client");
+const { createOAuthClientAuth } = require("@octokit/auth-oauth-user");
 ```
 
 </td></tr>
