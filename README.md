@@ -1,18 +1,22 @@
 # auth-oauth-user.js
 
-> Octokit authentication strategy for OAuth clients
+> Octokit authentication strategy for OAuth user authentication
 
 [![@latest](https://img.shields.io/npm/v/@octokit/auth-oauth-user.svg)](https://www.npmjs.com/package/@octokit/auth-oauth-user)
 [![Build Status](https://github.com/octokit/auth-oauth-user.js/workflows/Test/badge.svg)](https://github.com/octokit/auth-oauth-user.js/actions?query=workflow%3ATest+branch%3Amain)
+
+**Important:** `@octokit/auth-oauth-user` requires your app's `client_secret`, which must not be exposed. It's meant to be used on a server. If you are looking for an OAuth user authentication strategy that can be used on a client (browser, IoT, CLI), check out [`@octokit/auth-oauth-user-client`](https://github.com/octokit/auth-oauth-user-client.js#readme).
 
 <details>
 <summary>Table of contents</summary>
 
 <!-- toc -->
 
+- [Features](#features)
 - [Standalone usage](#standalone-usage)
-  - [Minimal usage example](#minimal-usage-example)
-  - [Full browser usage example](#full-browser-usage-example)
+  - [Using code from [web flow](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#web-application-flow)](#using-code-from-web-flowhttpsdevelopergithubcomappsbuilding-oauth-appsauthorizing-oauth-apps%23web-application-flow)
+  - [Using code from [device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)](#using-code-from-device-flowhttpsdocsgithubcomendevelopersappsauthorizing-oauth-apps%23device-flow)
+  - [Use an existing authentication](#use-an-existing-authentication)
 - [Usage with Octokit](#usage-with-octokit)
 - [`createOAuthClientAuth(options)`](#createoauthclientauthoptions)
 - [`auth(options)`](#authoptions)
@@ -24,6 +28,14 @@
 <!-- tocstop -->
 
 </details>
+
+## Features
+
+- Exchanges the code from [GitHub's OAuth web flow](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#web-application-flow) for a token
+- Supports [GitHub's OAuth device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
+- Supports auto-refreshing for [expiring user access tokens](https://docs.github.com/en/developers/apps/refreshing-user-to-server-access-tokens)
+- Can be instantiated using a previously obtained authentication
+- Can check a token, reset a token, invalidate a token, and delete an app authorization.
 
 ## Standalone usage
 
@@ -60,382 +72,65 @@ const { createOAuthClientAuth } = require("@octokit/auth-oauth-user");
 </tbody>
 </table>
 
-### Minimal usage example
+### Using code from [web flow](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#web-application-flow)
 
 ```js
 const auth = createOAuthClientAuth({
-  async create() {
-    // implement the code exchange based on your environment.
-    // You will usually get the code for the token exchange from the OAuth web flow, see
-    // https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-    return {
-      token: "", // the token
-      type: "oauth", // "oauth" for OAuth Apps, "app" for GitHub Apps
-      scopes: ["repo_public"], // set only for OAuth Apps
-    };
-  },
+  client_id: "123",
+  client_secret: "secret",
+  code: "123",
+  // optional
+  state: "state123",
+  redircetUrl: "https://acme-inc.com/login",
 });
 
-const { token } = await auth({ type: "create" });
-
-// token is the OAuth access token for the granting user
+// Exchanges the code for the user access token on first call
+// and caches the authentication for successive calls
+const { token } = await auth();
 ```
 
-### Full browser usage example
-
-This usage example assumes that the code runs on the same domain where OAuth routes exist to as defined at https://github.com/octokit/oauth-app.js#middlewares
+### Using code from [device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
 
 ```js
 const auth = createOAuthClientAuth({
-  /**
-   * Get authentication object from local cache
-   */
-  async get(authentication) {
-    if (authentication.token) {
-      if (await this.check(authentication)) {
-        return {
-          ...authentication,
-          isSignedIn: true,
-        };
-      }
+  client_id: "123",
+  code: "123",
+  onVerification(verification) {
+    // verification example
+    // {
+    //   device_code: "3584d83530557fdd1f46af8289938c8ef79f9dc5",
+    //   user_code: "WDJB-MJHT",
+    //   verification_uri: "https://github.com/login/device",
+    //   expires_in: 900,
+    //   interval: 5,
+    // };
 
-      await this.delete(authentication, { offline: true });
-    }
-    return { isSignedIn: false };
-  },
-
-  /**
-   * Create new authentication
-   *
-   * If the `?code` query parameter from the OAuth web flow is present, remove it,
-   * exchange it for an OAuth access token and return the new authentication object,
-   * it will be cached in localStorage (see authenticationStore)
-   *
-   * If the `?code` query parameter is not present, the user is redirected to the
-   * OAuth webflow.
-   */
-  async create(authentication) {
-    const code = new URL(location.href).searchParams.get("code");
-    if (!code) {
-      // invalidate current authentication
-      await this.delete(authentication);
-
-      // redirect to OAuth web flow
-      location.href = "/api/github/oauth/login";
-      return;
-    }
-
-    // remove ?code=... from URL
-    const path =
-      location.pathname +
-      location.search.replace(/\b(code|state)=\w+/g, "").replace(/[?&]+$/, "");
-    history.pushState({}, "", path);
-
-    // exchange code for OAuth token
-    const response = await fetch(baseUrl + "/token", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ code }),
-    });
-
-    // return with new authentication object
-    return response.json();
-  },
-
-  /**
-   * Check if the locally cached authentication object is valid or not.
-   */
-  async check({ token }) {
-    return fetch(baseUrl + "/token", {
-      headers: {
-        authorization: "token " + token,
-      },
-    }).then(
-      () => true,
-      (error) => {
-        if (error.status === 404) return false;
-        throw error;
-      }
-    );
-  },
-
-  /**
-   * Exchange the locally cached authentication object for a new one
-   */
-  async reset({ token }) {
-    const response = await fetch(baseUrl + "/token", {
-      method: "fetch",
-      headers: {
-        authorization: "token " + token,
-      },
-    });
-    return response.json();
-  },
-
-  /**
-   * Refresh an expiring authentication object for a new one
-   */
-  async refresh({ token, refreshToken }) {
-    const response = await fetch(baseUrl + "/token", {
-      method: "fetch",
-      headers: {
-        authorization: "token " + token,
-      },
-      body: JSON.stringify({ refreshToken }),
-    });
-    return response.json();
-  },
-
-  /**
-   * Invalidate the current authentcation and remove it from the local cache
-   */
-  async delete({ token }, { offline }) {
-    if (offline) return;
-
-    try {
-      await fetch(baseUrl + "/token", {
-        method: "delete",
-        headers: {
-          authorization: "token " + token,
-        },
-      });
-    } catch (error) {
-      if (error.status === 404) return; // token was already invalid
-      throw error;
-    }
-  },
-
-  /**
-   * Revoke access from the OAuth app and remove the current authentication
-   * from the local cache
-   */
-  async revokeGrant({ token }) {
-    await fetch(baseUrl + "/grant", {
-      method: "delete",
-      headers: {
-        authorization: "token " + token,
-      },
-    });
-  },
-
-  /**
-   * persist authentication in local store
-   * set to false to disable persistance
-   */
-  authenticationStore: {
-    async get() {
-      return JSON.parse(localStorage.getItem("authentication"));
-    },
-    async set(authentication) {
-      localStorage.setItem("authentication", JSON.stringify(authentication));
-    },
-    async remove() {
-      localStorage.removeItem("authentication");
-    },
-  },
-
-  /**
-   * persist code verification state in local store
-   * set to false to disable persistance
-   */
-  stateStore: {
-    async get() {
-      return localStorage.getItem("state");
-    },
-    async set(state) {
-      localStorage.setItem("state", state);
-    },
-    async remove() {
-      localStorage.removeItem("state");
-    },
+    console.log("Open %s", verification.verification_uri);
+    console.log("Enter code: %s", verification.user_code);
   },
 });
 
-const {
-  token,
-  type,
-  isSignedIn,
-  createdAt,
-  scopes,
-  refreshToken,
-  expiresAt,
-} = await auth({ type: "get" });
-
-const { token } = await auth({ type: "create" });
+// resolves once the user entered the `user_code` on `verification_uri`
+const { token } = await auth();
 ```
 
-### Full server usage example
-
-This example assumes that you have access to both, the `client_id` and `client_secret` of your OAuth Apps. The `request` method show in the example is [`@octokit/request`](https://github.com/octokit/request.js/), but any other request library could be used.
+### Use an existing authentication
 
 ```js
 const auth = createOAuthClientAuth({
-  /**
-   * Create new authentication
-   *
-   * If the `?code` query parameter from the OAuth web flow is present, remove it,
-   * exchange it for an OAuth access token and return the new authentication object,
-   * it will be cached in localStorage (see authenticationStore)
-   *
-   * If the `?code` query parameter is not present, the user is redirected to the
-   * OAuth webflow.
-   */
-  async create({ clientId, clientSecret, code }) {
-    const response = await request(
-      "POST https://github.com/login/oauth/access_token",
-      {
-        headers: {
-          accept: "application/json",
-        },
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-      }
-    );
-
-    if (response.data.error !== undefined) {
-      throw new Error(
-        `${response.data.error_description} (${response.data.error})`
-      );
-    }
-
-    // "scope" is only present for OAuth apps, not for GitHub apps
-    if (data.scope) {
-      return {
-        token: data.access_token,
-        scopes: data.scope.split(/,\s*/).filter(Boolean),
-        type: "oauth-app",
-      };
-    }
-
-    return {
-      token: data.access_token,
-      type: "github-app",
-    };
-  },
-
-  /**
-   * Check if the locally cached authentication object is valid or not.
-   */
-  async check({ token }) {
-    return fetch(baseUrl + "/token", {
-      headers: {
-        authorization: "token " + token,
-      },
-    }).then(
-      () => true,
-      (error) => {
-        if (error.status === 404) return false;
-        throw error;
-      }
-    );
-  },
-
-  /**
-   * Exchange the locally cached authentication object for a new one
-   */
-  async reset({ token }) {
-    const response = await fetch(baseUrl + "/token", {
-      method: "fetch",
-      headers: {
-        authorization: "token " + token,
-      },
-    });
-    return response.json();
-  },
-
-  /**
-   * Refresh an expiring authentication object for a new one
-   */
-  async refresh({ token, refreshToken }) {
-    const response = await fetch(baseUrl + "/token", {
-      method: "fetch",
-      headers: {
-        authorization: "token " + token,
-      },
-      body: JSON.stringify({ refreshToken }),
-    });
-    return response.json();
-  },
-
-  /**
-   * Invalidate the current authentcation and remove it from the local cache
-   */
-  async delete({ token }, { offline }) {
-    if (offline) return;
-
-    try {
-      await fetch(baseUrl + "/token", {
-        method: "delete",
-        headers: {
-          authorization: "token " + token,
-        },
-      });
-    } catch (error) {
-      if (error.status === 404) return; // token was already invalid
-      throw error;
-    }
-  },
-
-  /**
-   * Revoke access from the OAuth app and remove the current authentication
-   * from the local cache
-   */
-  async revokeGrant({ token }) {
-    await fetch(baseUrl + "/grant", {
-      method: "delete",
-      headers: {
-        authorization: "token " + token,
-      },
-    });
-  },
-
-  /**
-   * persist authentication in local store
-   * set to false to disable persistance
-   */
-  authenticationStore: {
-    async get() {
-      return JSON.parse(localStorage.getItem("authentication"));
-    },
-    async set(authentication) {
-      localStorage.setItem("authentication", JSON.stringify(authentication));
-    },
-    async remove() {
-      localStorage.removeItem("authentication");
-    },
-  },
-
-  /**
-   * persist code verification state in local store
-   * set to false to disable persistance
-   */
-  stateStore: {
-    async get() {
-      return localStorage.getItem("state");
-    },
-    async set(state) {
-      localStorage.setItem("state", state);
-    },
-    async remove() {
-      localStorage.removeItem("state");
-    },
-  },
+  client_id: "123",
+  client_secret: "secret",
+  token: "token123",
+  // only relevant for OAuth Apps
+  scopes: [],
+  // only relevant for GitHub Apps
+  refreshToken: "r1.refreshtoken123"
+  expiresAt: "2022-01-01T08:00:0.000Z",
+  refreshTokenExpiresAt: "2021-07-01T00:00:0.000Z",
 });
 
-const {
-  token,
-  type,
-  isSignedIn,
-  createdAt,
-  scopes,
-  refreshToken,
-  expiresAt,
-} = await auth({ type: "get" });
-
-const { token } = await auth({ type: "create" });
+// will return the passed authentication
+const { token } = await auth();
 ```
 
 ## Usage with Octokit
