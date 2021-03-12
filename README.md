@@ -5,7 +5,7 @@
 [![@latest](https://img.shields.io/npm/v/@octokit/auth-oauth-user.svg)](https://www.npmjs.com/package/@octokit/auth-oauth-user)
 [![Build Status](https://github.com/octokit/auth-oauth-user.js/workflows/Test/badge.svg)](https://github.com/octokit/auth-oauth-user.js/actions?query=workflow%3ATest+branch%3Amain)
 
-**Important:** `@octokit/auth-oauth-user` requires your app's `client_secret`, which must not be exposed. It's meant to be used on a server. If you are looking for an OAuth user authentication strategy that can be used on a client (browser, IoT, CLI), check out [`@octokit/auth-oauth-user-client`](https://github.com/octokit/auth-oauth-user-client.js#readme).
+**Important:** `@octokit/auth-oauth-user` requires your app's `client_secret`, which must not be kept secret. If you are looking for an OAuth user authentication strategy that can be used on a client (browser, IoT, CLI), check out [`@octokit/auth-oauth-user-client`](https://github.com/octokit/auth-oauth-user-client.js#readme).
 
 <details>
 <summary>Table of contents</summary>
@@ -14,11 +14,13 @@
 
 - [Features](#features)
 - [Standalone usage](#standalone-usage)
-  - [Using code from [web flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow)](#using-code-from-web-flowhttpsdocsgithubcomendevelopersappsauthorizing-oauth-apps%23web-application-flow)
-  - [Using code from [device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)](#using-code-from-device-flowhttpsdocsgithubcomendevelopersappsauthorizing-oauth-apps%23device-flow)
+  - [Exchange code from OAuth web flow](#exchange-code-from-oauth-web-flow)
+  - [OAuth Device flow](#oauth-device-flow)
   - [Use an existing authentication](#use-an-existing-authentication)
 - [Usage with Octokit](#usage-with-octokit)
-- [`createOAuthClientAuth(options)` or `new Octokit({ auth })`](#createoauthclientauthoptions-or-new-octokit-auth-)
+- [`createOAuthUserAuth(options)` or `new Octokit({ auth })`](#createoauthuserauthoptions-or-new-octokit-auth-)
+  - [When using GitHub's OAuth web flow](#when-using-githubs-oauth-web-flow)
+  - [When using GitHub's OAuth device flow](#when-using-githubs-oauth-device-flow)
 - [`auth(options)` or `octokit.auth(options)`](#authoptions-or-octokitauthoptions)
 - [Authentication object](#authentication-object)
   - [OAuth APP authentication token](#oauth-app-authentication-token)
@@ -34,11 +36,13 @@
 
 ## Features
 
-- Exchanges the code from [GitHub's OAuth web flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow) for a token
-- Supports [GitHub's OAuth device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
-- Supports auto-refreshing for [expiring user access tokens](https://docs.github.com/en/developers/apps/refreshing-user-to-server-access-tokens)
-- Can be instantiated using a previously obtained authentication
-- Can check a token, reset a token, invalidate a token, and delete an app authorization.
+- Code for token exchange from [GitHub's OAuth web flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow)
+- [GitHub's OAuth device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
+- Auto-refreshing for [expiring user access tokens](https://docs.github.com/en/developers/apps/refreshing-user-to-server-access-tokens)
+- Token verification
+- Token reset
+- Token invalidation
+- Application grant revocation
 
 ## Standalone usage
 
@@ -54,7 +58,7 @@ Load `@octokit/auth-oauth-user` directly from [cdn.skypack.dev](https://cdn.skyp
 
 ```html
 <script type="module">
-  import { createOAuthClientAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-user";
+  import { createOAuthUserAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-user";
 </script>
 ```
 
@@ -68,19 +72,19 @@ Node
 Install with `npm install @octokit/core @octokit/auth-oauth-user`
 
 ```js
-const { createOAuthClientAuth } = require("@octokit/auth-oauth-user");
+const { createOAuthUserAuth } = require("@octokit/auth-oauth-user");
 ```
 
 </td></tr>
 </tbody>
 </table>
 
-### Using code from [web flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow)
+### Exchange code from OAuth web flow
 
 ```js
-const auth = createOAuthClientAuth({
-  client_id: "123",
-  client_secret: "secret",
+const auth = createOAuthUserAuth({
+  clientId: "123",
+  clientSecret: "secret",
   code: "123",
   // optional
   state: "state123",
@@ -92,12 +96,14 @@ const auth = createOAuthClientAuth({
 const { token } = await auth();
 ```
 
-### Using code from [device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
+About [GitHub's OAuth web flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow)
+
+### OAuth Device flow
 
 ```js
-const auth = createOAuthClientAuth({
-  client_id: "123",
-  code: "123",
+const auth = createOAuthUserAuth({
+  clientId: "123",
+  clientSecret: "secret",
   onVerification(verification) {
     // verification example
     // {
@@ -117,12 +123,14 @@ const auth = createOAuthClientAuth({
 const { token } = await auth();
 ```
 
+About [GitHub's OAuth device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
+
 ### Use an existing authentication
 
 ```js
-const auth = createOAuthClientAuth({
-  client_id: "123",
-  client_secret: "secret",
+const auth = createOAuthUserAuth({
+  clientId: "123",
+  clientSecret: "secret",
   token: "token123",
   // only relevant for OAuth Apps
   scopes: [],
@@ -151,7 +159,7 @@ Load `@octokit/auth-oauth-user` and [`@octokit/core`](https://github.com/octokit
 ```html
 <script type="module">
   import { Octokit } from "https://cdn.skypack.dev/@octokit/core";
-  import { createOAuthClientAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-user";
+  import { createOAuthUserAuth } from "https://cdn.skypack.dev/@octokit/auth-oauth-user";
 </script>
 ```
 
@@ -166,7 +174,7 @@ Install with `npm install @octokit/core @octokit/auth-oauth-user`. Optionally re
 
 ```js
 const { Octokit } = require("@octokit/core");
-const { createOAuthClientAuth } = require("@octokit/auth-oauth-user");
+const { createOAuthUserAuth } = require("@octokit/auth-oauth-user");
 ```
 
 </td></tr>
@@ -175,10 +183,10 @@ const { createOAuthClientAuth } = require("@octokit/auth-oauth-user");
 
 ```js
 const octokit = new Octokit({
-  authStrategy: createOAuthClientAuth,
+  authStrategy: createOAuthUserAuth,
   auth: {
-    client_id: "123",
-    client_secret: "secret",
+    clientId: "123",
+    clientSecret: "secret",
     code: "123",
   },
 });
@@ -189,11 +197,11 @@ const { login } = await octokit.request("GET /user");
 console.log("Hello, %!", login);
 ```
 
-## `createOAuthClientAuth(options)` or `new Octokit({ auth })`
+## `createOAuthUserAuth(options)` or `new Octokit({ auth })`
 
-The `createOAuthClientAuth` method accepts a single `options` object as argument. The same set of options can be passed as `auth` to the `Octokit` constructor when setting `authStrategy: createOAuthClientAuth`
+The `createOAuthUserAuth` method accepts a single `options` object as argument. The same set of options can be passed as `auth` to the `Octokit` constructor when setting `authStrategy: createOAuthUserAuth`
 
-When using [GitHub's OAuth web flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow)
+### When using GitHub's OAuth web flow
 
 <table width="100%">
   <thead align=left>
@@ -268,7 +276,7 @@ When using [GitHub's OAuth web flow](https://docs.github.com/en/developers/apps/
   </tbody>
 </table>
 
-When using [GitHub's OAuth device flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#device-flow)
+### When using GitHub's OAuth device flow
 
 <table width="100%">
   <thead align=left>
@@ -298,16 +306,14 @@ When using [GitHub's OAuth device flow](https://docs.github.com/en/developers/ap
     </tr>
     <tr>
       <th>
-        <code>code</code>
+        <code>clientSecret</code>
       </th>
       <th>
         <code>string</code>
       </th>
       <td>
-
-**Required**. The `user_code` retrieved in step 1 of GitHub's OAuth device application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#step-1-app-requests-the-device-and-user-verification-codes-from-github).
-
-</td>
+        <strong>Required</strong>. Client Secret for your GitHub/OAuth App. The <code>clientSecret</code> is not needed for the OAuth device flow itself, but it is required for resetting, refreshing, and invalidating a token. Find the Client Secret on your app's settings page.
+      </td>
     </tr>
     <tr>
       <th>
@@ -339,11 +345,107 @@ const auth = createOAuthDeviceAuth({
   </tbody>
 </table>
 
-When passing an existing [authentication object](#authentication-object)
+### When passing an existing authentication object
+
+<table width="100%">
+  <thead align=left>
+    <tr>
+      <th width=150>
+        name
+      </th>
+      <th width=70>
+        type
+      </th>
+      <th>
+        description
+      </th>
+    </tr>
+  </thead>
+  <tbody align=left valign=top>
+    <tr>
+      <th>
+        <code>clientId</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        <strong>Required</strong>. Client ID of your GitHub/OAuth App. Find it on your app's settings page.
+      </td>
+    </tr>
+    <tr>
+      <th>
+        <code>clientSecret</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        <strong>Required</strong>. Client Secret for your GitHub/OAuth App. Create one on your app's settings page.
+      </td>
+    </tr>
+    <tr>
+      <th>
+        <code>token</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        <strong>Required</strong>. The user access token
+      </td>
+    </tr>
+    <tr>
+      <th>
+        <code>scopes</code>
+      </th>
+      <th>
+        <code>array of strings</code>
+      </th>
+      <td>
+        <strong>Required if token was created by an OAuth App</strong>. Array of OAuth scope names the token was granted
+      </td>
+    </tr>
+    <tr>
+      <th>
+        <code>refreshToken</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        Only relevant if token was created by GitHub Apps and token expiration is enabled.
+      </td>
+    </tr>
+    <tr>
+      <th>
+        <code>expiresAt</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        Only relevant if token was created by GitHub Apps and token expiration is enabled. Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2022-01-01T08:00:0.000Z</code>
+      </td>
+    </tr>
+    </tr>
+    <tr>
+      <th>
+        <code>refreshTokenExpiresAt</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        Only relevant if token was created by GitHub Apps and token expiration is enabled. Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2021-07-01T00:00:0.000Z</code>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## `auth(options)` or `octokit.auth(options)`
 
-The async `auth()` method returned by `createOAuthClientAuth(options)` or set on the `octokit` instance when the `Octokit` constructor was called with `authStrategy: createOAuthClientAuth`.
+The async `auth()` method is returned by `createOAuthUserAuth(options)` or set on the `octokit` instance when the `Octokit` constructor was called with `authStrategy: createOAuthUserAuth`.
 
 Resolves with an [authentication object](#authentication-object).
 
@@ -367,11 +469,13 @@ Resolves with an [authentication object](#authentication-object).
         <code>option</code>
       </th>
       <th>
-        <code>type</code>
+        <code>string</code>
       </th>
       <td>
 
-Without setting `type` auth will return the current authentication object, or exchange the `code` from the strategy options on first call. Possible values for `type` are
+Without setting `type` auth will return the current authentication object, or exchange the `code` from the strategy options on first call. If the current authentication token is expired, the tokens will be refreshed.
+
+Possible values for `type` are
 
 - `"check"`: sends request to verify the validity of the current token
 - `"reset"`: invalidates current token and replaces it with a new one
@@ -380,16 +484,6 @@ Without setting `type` auth will return the current authentication object, or ex
 - `"deleteAuthorization"`: revokes OAuth access for application. All tokens for the current user created by the same app are invalidated. The user will be prompted to grant access again during the next OAuth web flow.
 
 </td>
-    </tr>
-    <tr>
-      <th>
-        <code>option</code>
-      </th>
-      <th>
-        <code>type</code>
-      </th>
-      <td>
-      </td>
     </tr>
   </tbody>
 </table>
@@ -681,7 +775,6 @@ Either `undefined` or `true`. Will be set to `true` if the token was invalided e
       <td>
         Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2022-01-01T08:00:0.000Z</code>
       </td>
-    </tr>
     </tr>
     <tr>
       <th>

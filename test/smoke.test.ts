@@ -1,11 +1,11 @@
-import { createOAuthClientAuth } from "../src";
+import { createOAuthUserAuth } from "../src";
 
 describe("Smoke test", () => {
   it("is a function", () => {
-    expect(createOAuthClientAuth).toBeInstanceOf(Function);
+    expect(createOAuthUserAuth).toBeInstanceOf(Function);
   });
 
-  it("createOAuthClientAuth.VERSION is set", () => {
-    expect(createOAuthClientAuth.VERSION).toEqual("0.0.0-development");
+  it("createOAuthUserAuth.VERSION is set", () => {
+    expect(createOAuthUserAuth.VERSION).toEqual("0.0.0-development");
   });
 });

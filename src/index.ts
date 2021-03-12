@@ -9,7 +9,7 @@ export type Types = {
   Authentication: any;
 };
 
-export const createOAuthClientAuth: StrategyInterface = function createOAuthClientAuth(
+export const createOAuthUserAuth: StrategyInterface = function createOAuthUserAuth(
   options: StrategyOption
 ) {
   return Object.assign(auth.bind(null, options), {
