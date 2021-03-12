@@ -5,7 +5,7 @@
 [![@latest](https://img.shields.io/npm/v/@octokit/auth-oauth-user.svg)](https://www.npmjs.com/package/@octokit/auth-oauth-user)
 [![Build Status](https://github.com/octokit/auth-oauth-user.js/workflows/Test/badge.svg)](https://github.com/octokit/auth-oauth-user.js/actions?query=workflow%3ATest+branch%3Amain)
 
-**Important:** `@octokit/auth-oauth-user` requires your app's `client_secret`, which must not be kept secret. If you are looking for an OAuth user authentication strategy that can be used on a client (browser, IoT, CLI), check out [`@octokit/auth-oauth-user-client`](https://github.com/octokit/auth-oauth-user-client.js#readme).
+**Important:** `@octokit/auth-oauth-user` requires your app's `client_secret`, which must not be exposed. If you are looking for an OAuth user authentication strategy that can be used on a client (browser, IoT, CLI), check out [`@octokit/auth-oauth-user-client`](https://github.com/octokit/auth-oauth-user-client.js#readme). Note that `@octokit/auth-oauth-user-client` requires a backend. The only exception is [`@octokit/auth-oauth-device`](https://github.com/octokit/auth-oauth-device.js#readme) which does not require the `client_secret`, but does not work in browsers due to CORS constraints.
 
 <details>
 <summary>Table of contents</summary>
