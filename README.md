@@ -21,6 +21,7 @@
 - [`createOAuthUserAuth(options)` or `new Octokit({ auth })`](#createoauthuserauthoptions-or-new-octokit-auth-)
   - [When using GitHub's OAuth web flow](#when-using-githubs-oauth-web-flow)
   - [When using GitHub's OAuth device flow](#when-using-githubs-oauth-device-flow)
+  - [When passing an existing authentication object](#when-passing-an-existing-authentication-object)
 - [`auth(options)` or `octokit.auth(options)`](#authoptions-or-octokitauthoptions)
 - [Authentication object](#authentication-object)
   - [OAuth APP authentication token](#oauth-app-authentication-token)
