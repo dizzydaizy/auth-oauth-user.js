@@ -345,6 +345,8 @@ When passing an existing [authentication object](#authentication-object)
 
 The async `auth()` method returned by `createOAuthClientAuth(options)` or set on the `octokit` instance when the `Octokit` constructor was called with `authStrategy: createOAuthClientAuth`.
 
+Resolves with an [authentication object](#authentication-object).
+
 <table width="100%">
   <thead align=left>
     <tr>
@@ -368,7 +370,25 @@ The async `auth()` method returned by `createOAuthClientAuth(options)` or set on
         <code>type</code>
       </th>
       <td>
-        <strong>Required</strong>. Description...
+
+Without setting `type` auth will return the current authentication object, or exchange the `code` from the strategy options on first call. Possible values for `type` are
+
+- `"check"`: sends request to verify the validity of the current token
+- `"reset"`: invalidates current token and replaces it with a new one
+- `"refresh"`: GitHub Apps only, and only if expiring user tokens are enabled.
+- `"delete"`: invalidates current token
+- `"deleteAuthorization"`: revokes OAuth access for application. All tokens for the current user created by the same app are invalidated. The user will be prompted to grant access again during the next OAuth web flow.
+
+</td>
+    </tr>
+    <tr>
+      <th>
+        <code>option</code>
+      </th>
+      <th>
+        <code>type</code>
+      </th>
+      <td>
       </td>
     </tr>
   </tbody>
@@ -434,6 +454,17 @@ There are three possible results
     </tr>
     <tr>
       <th>
+        <code>clientId</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        The app's <code>Client ID</code>
+      </td>
+    </tr>
+    <tr>
+      <th>
         <code>clientType</code>
       </th>
       <th>
@@ -453,6 +484,19 @@ There are three possible results
       <td>
         array of scope names enabled for the token
       </td>
+    </tr>
+    <tr>
+      <th>
+        <code>invalid</code>
+      </th>
+      <th>
+        <code>boolean</code>
+      </th>
+      <td>
+
+Either `undefined` or `true`. Will be set to `true` if the token was invalided explicitly or found to be invalid
+
+</td>
     </tr>
   </tbody>
 </table>
@@ -509,6 +553,17 @@ There are three possible results
     </tr>
     <tr>
       <th>
+        <code>clientId</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        The app's <code>Client ID</code>
+      </td>
+    </tr>
+    <tr>
+      <th>
         <code>clientType</code>
       </th>
       <th>
@@ -518,6 +573,18 @@ There are three possible results
         <code>"github-app"</code>
       </td>
     </tr>
+    <tr>
+      <th>
+        <code>invalid</code>
+      </th>
+      <th>
+        <code>boolean</code>
+      </th>
+      <td>
+
+Either `undefined` or `true`. Will be set to `true` if the token was invalided explicitly or found to be invalid
+
+</td>
   </tbody>
 </table>
 
@@ -573,6 +640,17 @@ There are three possible results
     </tr>
     <tr>
       <th>
+        <code>clientId</code>
+      </th>
+      <th>
+        <code>string</code>
+      </th>
+      <td>
+        The app's <code>Client ID</code>
+      </td>
+    </tr>
+    <tr>
+      <th>
         <code>clientType</code>
       </th>
       <th>
@@ -616,6 +694,18 @@ There are three possible results
         Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2021-07-01T00:00:0.000Z</code>
       </td>
     </tr>
+    <tr>
+      <th>
+        <code>invalid</code>
+      </th>
+      <th>
+        <code>boolean</code>
+      </th>
+      <td>
+
+Either `undefined` or `true`. Will be set to `true` if the token was invalided explicitly or found to be invalid
+
+</td>
   </tbody>
 </table>
 
