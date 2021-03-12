@@ -249,8 +249,10 @@ The `createOAuthUserAuth` method accepts a single `options` object as argument. 
         <code>string</code>
       </th>
       <td>
-        <strong>Required</strong>. The authorization code which was passed as query parameter to the callback URL from [GitHub's OAuth web application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow). 
-      </td>
+
+**Required.** The authorization code which was passed as query parameter to the callback URL from [GitHub's OAuth web application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow).
+
+</td>
     </tr>
     <tr>
       <th>
@@ -260,8 +262,10 @@ The `createOAuthUserAuth` method accepts a single `options` object as argument. 
         <code>string</code>
       </th>
       <td>
-        The unguessable random string you provided in [Step 1 of GitHub's OAuth web application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#1-request-a-users-github-identity). 
-      </td>
+
+The unguessable random string you provided in [Step 1 of GitHub's OAuth web application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#1-request-a-users-github-identity).
+
+</td>
     </tr>
     <tr>
       <th>
@@ -271,8 +275,10 @@ The `createOAuthUserAuth` method accepts a single `options` object as argument. 
         <code>string</code>
       </th>
       <td>
-        The <code>redirect_uri</code> parameter you provided in [Step 1 of GitHub's OAuth web application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#1-request-a-users-github-identity).
-      </td>
+        
+The <code>redirect_uri</code> parameter you provided in [Step 1 of GitHub's OAuth web application flow](https://docs.github.com/en/developers/apps/authorizing-oauth-apps#1-request-a-users-github-identity).
+
+</td>
     </tr>
   </tbody>
 </table>
