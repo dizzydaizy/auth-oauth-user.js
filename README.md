@@ -127,7 +127,7 @@ const auth = createOAuthClientAuth({
   // only relevant for OAuth Apps
   scopes: [],
   // only relevant for GitHub Apps
-  refreshToken: "r1.refreshtoken123"
+  refreshToken: "r1.refreshtoken123",
   expiresAt: "2022-01-01T08:00:0.000Z",
   refreshTokenExpiresAt: "2021-07-01T00:00:0.000Z",
 });
