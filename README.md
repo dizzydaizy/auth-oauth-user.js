@@ -421,7 +421,7 @@ const auth = createOAuthDeviceAuth({
         <code>string</code>
       </th>
       <td>
-        Only relevant if token was created by GitHub Apps and token expiration is enabled.
+        Only relevant if token was created by a GitHub App and token expiration is enabled.
       </td>
     </tr>
     <tr>
@@ -432,7 +432,7 @@ const auth = createOAuthDeviceAuth({
         <code>string</code>
       </th>
       <td>
-        Only relevant if token was created by GitHub Apps and token expiration is enabled. Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2022-01-01T08:00:0.000Z</code>
+        Only relevant if token was created by a GitHub App and token expiration is enabled. Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2022-01-01T08:00:0.000Z</code>
       </td>
     </tr>
     </tr>
@@ -444,7 +444,7 @@ const auth = createOAuthDeviceAuth({
         <code>string</code>
       </th>
       <td>
-        Only relevant if token was created by GitHub Apps and token expiration is enabled. Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2021-07-01T00:00:0.000Z</code>
+        Only relevant if token was created by a GitHub App and token expiration is enabled. Date timestamp in <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">ISO 8601</a> standard. Example: <code>2021-07-01T00:00:0.000Z</code>
       </td>
     </tr>
   </tbody>
